@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Feb  8 18:23:58 2025
+
+@author: oliver
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 参数设置
+wavelength = 532e-9  # 波长（532nm）
+k = 2 * np.pi / wavelength
+l1, l2 = 2, -3  # 拓扑荷数
+r_max = 1e-3  # 横向范围（1mm）
+N = 512  # 像素数
+
+# 生成极坐标网格
+x = np.linspace(-r_max, r_max, N)
+y = np.linspace(-r_max, r_max, N)
+X, Y = np.meshgrid(x, y)
+r = np.sqrt(X**2 + Y**2)
+phi = np.arctan2(Y, X)
+
+# 生成拉盖尔-高斯模式
+# p通常被称为径向模式数（radial mode number）,对应不同的径向分布特征,这里简便起见取p=0
+def laguerre_gauss(r, phi, l, p=0):
+    w0 = 0.5e-3  # 束腰半径
+    return (r / w0)**np.abs(l) * np.exp(-r**2 / w0**2) * np.exp(1j * l * phi)
+
+# 叠加两种模式
+A1 = laguerre_gauss(r, phi, l1)
+A2 = laguerre_gauss(r, phi, l2)
+E = A1 + A2
+
+# 计算光强
+I = np.abs(E)**2
+
+# 绘制光强分布
+plt.imshow(I, cmap='hot', extent=[-r_max, r_max, -r_max, r_max])
+plt.colorbar(label='Intensity')
+plt.title('Fig2 (a) - Intensity Distribution of Vector Beam')
+plt.show()
