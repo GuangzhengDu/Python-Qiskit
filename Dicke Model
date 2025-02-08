@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#Simulation and analysis of the dynamics of a Dicke quantum system consisting of multiple two-energy-level atoms
+"""
+Created on Fri Nov 12 18:07:02 2021
+
+@author: oliver
+"""
+
+
+import matplotlib.pyplot as plt
+import time
+import numpy as np
+from qutip import *
+from qutip.piqs import *
+from scipy.sparse import load_npz, save_npz
+N = 10
+ntls = N
+nds = num_dicke_states(N)
+print("The number of Dicke states is", nds)
+[jx, jy, jz] = jspin(N)
+jp = jspin(N, "+")
+jm = jspin(N, "-")
+system = Dicke(N = N)
+
+a = 1/np.sqrt(2)
+b = 1/np.sqrt(2)
+excited_ = dicke(N, N/2,N/2)
+# here we set the initial coefficients
+gE = 0 # local emission
+gD = 0 # local dephasing
+gP = 0 # local pumping
+gCE = 1 # collective emission
+gCD = 0 # collective dephasing
+gCP = 0 # collective pumping
+w0 = 1  # bare frequency
+wi = 0  # coherent drive frequency
+
+# spin hamiltonian
+h0 = w0 * jz
+hint = wi * jx
+h = h0 #+ hint
+
+#set initial conditions for spins by initializing the system and building the Liouvillian matrix
+system = Dicke(hamiltonian = h, 
+               N = N, 
+               emission = gE, 
+               pumping = gP, 
+               dephasing = gD, 
+               collective_emission = gCE, 
+               collective_pumping = gCP, 
+               collective_dephasing = gCD)
+clock_t0 = process_time()
+lind = system.lindbladian()
+liouv = system.liouvillian()
+clock_tf = clock()
+dt_clock = clock_tf - clock_t0
+print("Time (in seconds) to generate the Liouvillian for N = 20 TLSs:", dt_clock)
+
+## Solution of the dynamics for different initial conditions
+
+# parameters for the time integration of the dynamics
+nt = 1001
+td0 = np.log(N)/(N*gCE) # delay time is used as a reference
+tmax = 10 * td0
+t = np.linspace(0, tmax, nt)
+
+# initial states 
+rho01 = excited_
+
+
+#Excited
+clock_t0 = process_time()
+result1 = mesolve(liouv, rho01, t, [], e_ops = [jz, jp*jm, jz**2], 
+                  options = Options(store_states=True))
+rhot1 = result1.states
+jz_t1 = result1.expect[0]
+jpjm_t1 = result1.expect[1]
+jz2_t1 = result1.expect[2]
+clock_tf = clock()
+dt_clock = clock_tf - clock_t0
+print("Elapsed time (in seconds) for this run: ", dt_clock)
+
+jmax = (0.5 * N)
+
+j2max = (0.5 * N + 1) * (0.5 * N)
+
+label_size = 20
+label_size2 = 20
+label_size3 = 20
+label_size4 = 15
+plt.rc('text', usetex = True)
+
+
+
+fig1 = plt.figure()
+djz1 = (jz2_t1- jz_t1**2)/jmax**2
+djz2 = (jz2_t2- jz_t2**2)/jmax**2
+djz3 = (jz2_t3- jz_t3**2)/jmax**2
+djz4 = (jz2_t4- jz_t4**2)/jmax**2
+djz5 = (jz2_t5- jz_t5**2)/jmax**2
+djz6 = (jz2_t6- jz_t6**2)/jmax**2
+
+plt.plot(t/td0, djz1, '-.', label = r"$|\frac{N}{2},\frac{N}{2}\rangle$")
+plt.plot(t/td0, djz2, '-', label = r"$|\frac{N}{2},0\rangle$")
+plt.plot(t/td0, djz3, '-', label = r"$|+\rangle_\mathrm{CSS}$")
+plt.plot(t/td0, djz4, '-', label = r"$|-\rangle_\mathrm{CSS}$")
+plt.plot(t/td0, djz5, '-', label = r"$|0,0\rangle$")
+plt.plot(t/td0, djz6, '--', label = r"$|\mathrm{GHZ}\rangle$")
